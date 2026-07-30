@@ -1,0 +1,85 @@
+export enum AppView { disk-list, scanning, detail }
+
+export struct DiskInfo {
+    mount-point: string,
+    total-text: string,
+    free-text: string,
+    used-percent: float, // 0..100
+    is-removable: bool,
+    bar-color: color,
+}
+
+export struct TreemapRect {
+    node-id: int,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    color: color,
+    label: string,
+    size-text: string,
+    is-dir: bool,
+}
+
+export struct FileRow {
+    node-id: int,
+    name: string,
+    size-text: string,
+    is-dir: bool,
+    percent: float, // share of the focused directory, 0..100
+    marked: bool,
+}
+
+export global Palette {
+    out property <color> bg-window: #0b1120;
+    out property <color> bg-panel: #111827;
+    out property <color> bg-panel-alt: #1f2937;
+    out property <color> bg-row-hover: #1f2937aa;
+    out property <color> text-primary: #ffffff;
+    out property <color> text-muted: #9ca3af;
+    out property <color> accent: #6366f1;
+    out property <color> danger: #dc2626;
+    out property <color> danger-hover: #b91c1c;
+    out property <color> border-subtle: #374151;
+    out property <color> green: #16a34a;
+    out property <color> yellow: #ca8a04;
+    out property <color> red: #dc2626;
+}
+
+export global AppState {
+    in-out property <AppView> view: AppView.disk-list;
+    in-out property <[DiskInfo]> disks: [];
+    in property <string> app-version: "0.4.0";
+
+    // scanning
+    in-out property <string> scan-path: "";
+    in-out property <bool> scan-is-directory: false;
+    in-out property <float> scan-progress-percent: 0.0;
+    in-out property <string> scan-progress-text: "";
+    in-out property <bool> scan-had-error: false;
+    in-out property <string> scan-error-text: "";
+
+    // detail / treemap
+    in-out property <string> breadcrumb: "";
+    in-out property <string> focused-size-text: "";
+    in-out property <bool> can-go-up: false;
+    in-out property <[TreemapRect]> treemap-rects: [];
+    in-out property <[FileRow]> file-rows: [];
+    in-out property <int> delete-count: 0;
+    in-out property <string> delete-size-text: "";
+    in-out property <bool> deleting: false;
+    in-out property <string> deleting-status: "";
+
+    callback select-folder();
+    callback scan-disk(string, bool);
+    callback cancel-scan();
+    callback back-to-list();
+    callback focus-node(int);
+    callback go-up();
+    callback reveal-node(int);
+    callback reveal-current();
+    callback toggle-delete-mark(int);
+    callback clear-delete-list();
+    callback confirm-delete();
+    callback treemap-resized(float, float);
+}

@@ -1,0 +1,92 @@
+import { Palette, AppState } from "./globals.slint";
+
+export component ScanningPage inherits Rectangle {
+    background: Palette.bg-window;
+
+    VerticalLayout {
+        alignment: center;
+        spacing: 16px;
+
+        Rectangle {
+            width: 64px;
+            height: 64px;
+            horizontal-stretch: 0;
+            Rectangle {
+                x: 8px;
+                y: 4px;
+                width: parent.width - 16px;
+                height: parent.height - 12px;
+                border-radius: 10px;
+                background: Palette.bg-panel-alt;
+                border-width: 2px;
+                border-color: Palette.accent;
+            }
+        }
+
+        Text {
+            text: "Scanning " + AppState.scan-path;
+            color: Palette.text-primary;
+            font-size: 16px;
+            horizontal-alignment: center;
+        }
+
+        Text {
+            text: AppState.scan-progress-text;
+            color: Palette.text-muted;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+
+        Rectangle {
+            width: 360px;
+            height: 8px;
+            border-radius: 4px;
+            background: Palette.bg-panel-alt;
+
+            Rectangle {
+                x: 0;
+                y: 0;
+                height: parent.height;
+                width: parent.width * (min(AppState.scan-progress-percent, 100) / 100);
+                border-radius: 4px;
+                background: Palette.accent;
+            }
+        }
+
+        if AppState.scan-had-error: Text {
+            text: AppState.scan-error-text;
+            color: Palette.danger;
+            font-size: 12px;
+            horizontal-alignment: center;
+        }
+
+        Rectangle {
+            height: 12px;
+        }
+
+        back-btn := Rectangle {
+            width: 120px;
+            height: 36px;
+            border-radius: 8px;
+            background: back-area.has-hover ? Palette.bg-panel-alt : transparent;
+            border-width: 1px;
+            border-color: Palette.border-subtle;
+
+            back-area := TouchArea {
+                clicked => {
+                    AppState.cancel-scan();
+                    AppState.back-to-list();
+                }
+            }
+
+            Text {
+                text: "Back";
+                color: Palette.text-primary;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                width: 100%;
+                height: 100%;
+            }
+        }
+    }
+}

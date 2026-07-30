@@ -1,0 +1,264 @@
+import { Palette, AppState, FileRow } from "./globals.slint";
+import { FileGlyph } from "./icons.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component FileRowItem inherits Rectangle {
+    in property <FileRow> entry;
+    height: 44px;
+    border-radius: 6px;
+    background: row-area.has-hover ? Palette.bg-row-hover : Palette.bg-panel;
+    border-width: root.entry.marked ? 1px : 0px;
+    border-color: Palette.danger;
+
+    row-area := TouchArea {
+        clicked => {
+            if (root.entry.is-dir) {
+                AppState.focus-node(root.entry.node-id);
+            } else {
+                AppState.reveal-node(root.entry.node-id);
+            }
+        }
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                AppState.reveal-node(root.entry.node-id);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding: 6px;
+        spacing: 8px;
+
+        mark-box := Rectangle {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            border-width: 1px;
+            border-color: Palette.border-subtle;
+            background: root.entry.marked ? Palette.danger : transparent;
+            y: (parent.height - self.height) / 2;
+            visible: root.entry.node-id >= 0;
+
+            TouchArea {
+                clicked => { AppState.toggle-delete-mark(root.entry.node-id); }
+            }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            FileGlyph { }
+        }
+
+        VerticalLayout {
+            alignment: center;
+            spacing: 3px;
+
+            Text {
+                text: root.entry.name;
+                color: Palette.text-primary;
+                font-size: 12px;
+                overflow: elide;
+            }
+
+            Rectangle {
+                height: 4px;
+                border-radius: 2px;
+                background: Palette.bg-panel-alt;
+
+                Rectangle {
+                    x: 0;
+                    y: 0;
+                    height: parent.height;
+                    width: parent.width * (min(root.entry.percent, 100) / 100);
+                    border-radius: 2px;
+                    background: Palette.accent;
+                }
+            }
+        }
+
+        Text {
+            text: root.entry.size-text;
+            color: Palette.text-muted;
+            font-size: 11px;
+            vertical-alignment: center;
+            horizontal-alignment: right;
+        }
+    }
+}
+
+export component DetailPage inherits Rectangle {
+    background: Palette.bg-window;
+
+    HorizontalLayout {
+        canvas := Rectangle {
+            horizontal-stretch: 2;
+            background: Palette.bg-window;
+
+            changed width => { AppState.treemap-resized(self.width / 1px, self.height / 1px); }
+            changed height => { AppState.treemap-resized(self.width / 1px, self.height / 1px); }
+
+            for rect in AppState.treemap-rects: Rectangle {
+                x: rect.x * 1px;
+                y: rect.y * 1px;
+                width: rect.width * 1px;
+                height: rect.height * 1px;
+                background: rect.color;
+                border-width: cell-area.has-hover ? 2px : 1px;
+                border-color: cell-area.has-hover ? Palette.text-primary : #00000066;
+
+                cell-area := TouchArea {
+                    clicked => {
+                        if (rect.is-dir) {
+                            AppState.focus-node(rect.node-id);
+                        } else {
+                            AppState.reveal-node(rect.node-id);
+                        }
+                    }
+                    pointer-event(event) => {
+                        if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                            AppState.reveal-node(rect.node-id);
+                        }
+                    }
+                }
+
+                if rect.width > 46 && rect.height > 18: VerticalLayout {
+                    padding: 4px;
+                    alignment: start;
+                    Text {
+                        text: rect.label;
+                        color: white;
+                        font-size: 11px;
+                        overflow: elide;
+                    }
+                    if rect.height > 34: Text {
+                        text: rect.size-text;
+                        color: #ffffffcc;
+                        font-size: 10px;
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            horizontal-stretch: 1;
+            min-width: 320px;
+            max-width: 420px;
+            background: Palette.bg-panel;
+
+            VerticalLayout {
+                padding: 8px;
+                spacing: 8px;
+
+                breadcrumb-area := Rectangle {
+                    height: 44px;
+                    border-radius: 6px;
+                    background: bc-area.has-hover ? Palette.bg-panel-alt : Palette.bg-panel-alt;
+
+                    bc-area := TouchArea {
+                        clicked => {
+                            if (AppState.can-go-up) {
+                                AppState.go-up();
+                            }
+                        }
+                        pointer-event(event) => {
+                            if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                                AppState.reveal-current();
+                            }
+                        }
+                    }
+
+                    HorizontalLayout {
+                        padding: 8px;
+                        spacing: 8px;
+                        Text {
+                            text: AppState.breadcrumb;
+                            color: Palette.text-primary;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                            overflow: elide;
+                            horizontal-stretch: 1;
+                        }
+                        Text {
+                            text: AppState.focused-size-text;
+                            color: Palette.text-muted;
+                            font-size: 11px;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+
+                ScrollView {
+                    vertical-stretch: 1;
+                    VerticalLayout {
+                        spacing: 4px;
+                        for entry in AppState.file-rows: FileRowItem { entry: entry; }
+                    }
+                }
+
+                Rectangle {
+                    height: AppState.delete-count > 0 ? 110px : 64px;
+                    border-radius: 8px;
+                    border-width: 1px;
+                    border-color: Palette.border-subtle;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 8px;
+                        alignment: center;
+
+                        if AppState.delete-count == 0: Text {
+                            text: "Select items above and mark them for deletion";
+                            color: Palette.text-muted;
+                            font-size: 11px;
+                            horizontal-alignment: center;
+                            wrap: word-wrap;
+                        }
+
+                        if AppState.delete-count > 0: HorizontalLayout {
+                            spacing: 6px;
+                            Text {
+                                text: AppState.delete-count + " item(s) selected — " + AppState.delete-size-text;
+                                color: Palette.text-muted;
+                                font-size: 11px;
+                                vertical-alignment: center;
+                                horizontal-stretch: 1;
+                                overflow: elide;
+                            }
+                            clear-area := TouchArea {
+                                width: 70px;
+                                clicked => { AppState.clear-delete-list(); }
+                            }
+                            Text {
+                                text: "Clear";
+                                color: Palette.accent;
+                                font-size: 11px;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        if AppState.delete-count > 0: Rectangle {
+                            height: 32px;
+                            border-radius: 6px;
+                            background: AppState.deleting ? Palette.danger-hover : (del-area.has-hover ? Palette.danger-hover : Palette.danger);
+
+                            del-area := TouchArea {
+                                enabled: !AppState.deleting;
+                                clicked => { AppState.confirm-delete(); }
+                            }
+
+                            Text {
+                                text: AppState.deleting ? AppState.deleting-status : "Delete";
+                                color: white;
+                                font-weight: 600;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                                width: 100%;
+                                height: 100%;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

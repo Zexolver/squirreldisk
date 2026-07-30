@@ -1,0 +1,81 @@
+import { Palette, AppState, AppView } from "./globals.slint";
+import { DiskListPage } from "./disk-list.slint";
+import { ScanningPage } from "./scanning-page.slint";
+import { DetailPage } from "./detail-page.slint";
+
+export { AppState, AppView, DiskInfo, TreemapRect, FileRow } from "./globals.slint";
+
+export component AppWindow inherits Window {
+    title: "SquirrelDisk";
+    icon: @image-url("../icons/icon.png");
+    preferred-width: 1000px;
+    preferred-height: 640px;
+    min-width: 640px;
+    min-height: 420px;
+    background: Palette.bg-window;
+
+    VerticalLayout {
+        Rectangle {
+            height: 40px;
+            background: #0f1831;
+
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                spacing: 10px;
+
+                Text {
+                    text: "SquirrelDisk";
+                    color: AppState.view == AppView.disk-list ? Palette.text-primary : Palette.text-muted;
+                    font-weight: 700;
+                    font-size: 13px;
+                    vertical-alignment: center;
+                }
+
+                if AppState.view != AppView.disk-list: Text {
+                    text: "›";
+                    color: Palette.text-muted;
+                    vertical-alignment: center;
+                }
+
+                if AppState.view != AppView.disk-list: home-area := TouchArea {
+                    width: home-text.preferred-width;
+                    clicked => {
+                        AppState.cancel-scan();
+                        AppState.back-to-list();
+                    }
+                    home-text := Text {
+                        text: "All Disks";
+                        color: home-area.has-hover ? Palette.text-primary : Palette.text-muted;
+                        font-size: 12px;
+                        vertical-alignment: center;
+                    }
+                }
+
+                if AppState.view != AppView.disk-list: Text {
+                    text: "›";
+                    color: Palette.text-muted;
+                    vertical-alignment: center;
+                }
+
+                if AppState.view != AppView.disk-list: Text {
+                    text: (AppState.scan-is-directory ? "Folder (" : "Disk (") + AppState.scan-path + ")";
+                    color: Palette.text-muted;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                Rectangle { }
+            }
+        }
+
+        Rectangle {
+            vertical-stretch: 1;
+
+            if AppState.view == AppView.disk-list: DiskListPage { }
+            if AppState.view == AppView.scanning: ScanningPage { }
+            if AppState.view == AppView.detail: DetailPage { }
+        }
+    }
+}

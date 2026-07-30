@@ -1,0 +1,122 @@
+import { Palette, AppState, DiskInfo } from "./globals.slint";
+import { DiskGlyph, FolderGlyph } from "./icons.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component DiskRow inherits Rectangle {
+    in property <DiskInfo> disk;
+    height: 84px;
+    background: area.has-hover ? Palette.bg-row-hover : transparent;
+
+    area := TouchArea {
+        clicked => { AppState.scan-disk(root.disk.mount-point, false); }
+        pointer-event(event) => {
+            if (event.kind == PointerEventKind.down && event.button == PointerEventButton.right) {
+                AppState.scan-disk(root.disk.mount-point, true);
+            }
+        }
+    }
+
+    HorizontalLayout {
+        padding: 16px;
+        spacing: 16px;
+        alignment: start;
+
+        DiskGlyph { removable: root.disk.is-removable; }
+
+        VerticalLayout {
+            spacing: 6px;
+            alignment: center;
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: root.disk.mount-point;
+                    color: Palette.text-primary;
+                    font-weight: 600;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.disk.total-text;
+                    color: Palette.text-muted;
+                    font-size: 12px;
+                    vertical-alignment: center;
+                }
+                Rectangle { }
+                Text {
+                    text: round(root.disk.used-percent) + "%  ·  " + root.disk.free-text + " free";
+                    color: Palette.text-muted;
+                    font-size: 12px;
+                }
+            }
+
+            Rectangle {
+                height: 8px;
+                border-radius: 4px;
+                background: Palette.bg-panel-alt;
+
+                Rectangle {
+                    x: 0;
+                    y: 0;
+                    height: parent.height;
+                    width: parent.width * (root.disk.used-percent / 100);
+                    border-radius: 4px;
+                    background: root.disk.bar-color;
+                }
+            }
+        }
+    }
+}
+
+export component DiskListPage inherits Rectangle {
+    background: Palette.bg-window;
+
+    VerticalLayout {
+        ScrollView {
+            VerticalLayout {
+                for disk in AppState.disks: DiskRow { disk: disk; }
+
+                Rectangle {
+                    height: 72px;
+                    background: pick-area.has-hover ? Palette.bg-row-hover : transparent;
+
+                    pick-area := TouchArea {
+                        clicked => { AppState.select-folder(); }
+                    }
+
+                    HorizontalLayout {
+                        padding: 16px;
+                        spacing: 16px;
+                        alignment: start;
+                        FolderGlyph { }
+                        Text {
+                            text: "Select a folder to scan";
+                            color: Palette.text-primary;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+            }
+        }
+
+        Rectangle {
+            height: 32px;
+            HorizontalLayout {
+                padding-left: 16px;
+                padding-right: 16px;
+                Text {
+                    text: "Tip: right-click a disk for a full scan (slower)";
+                    color: Palette.text-muted;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+                Rectangle { }
+                Text {
+                    text: "v" + AppState.app-version;
+                    color: Palette.text-muted;
+                    font-size: 11px;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

@@ -10,7 +10,7 @@
     <a href="https://github.com/adileo/squirreldisk"><img src="https://img.shields.io/badge/built_with-Rust-dca282.svg?style=flat-square"></a>
      &nbsp;
      <a href="https://discord.gg/Xp8QtMM65w"><img src="https://img.shields.io/badge/Discord-%235865F2.svg?style=flat-square&logo=discord&logoColor=white"></a>
-   
+
 </p>
 
 <div align="center">
@@ -19,52 +19,84 @@
 
 </div>
 
-![Screenshot](/public/squirrel-demo-2.gif)
-
 ## What's taking your hard disk space?
 
-The easiest open source app you will ever use to detect huge files. Built with Rust + React (Tauri).
+The easiest open source app you will ever use to detect huge files. Built entirely in Rust, with a native [Slint](https://slint.dev) UI — no webview, no JavaScript, no bundled browser runtime.
 
-Squirreldisk is an open source alternative to softwares like: WinDirStat, WizTree, TreeSize and DaisyDisk.
+Squirreldisk is an open source alternative to software like: WinDirStat, WizTree, TreeSize and DaisyDisk.
 
 Some features:
 
-- Fast scan and deep directory scanning
-- Disk scanning or pick a directory
-- External disks real-time detection
-- A sunburst chart to quickly visualize the disk usage
-- Drag and drop: collect all items to be deleted
-- Right click on a folder/file to open the file explorer
-- Cross-Platform MacOS, Windows, Linux
-- Auto-updater: get notified when there is a new update (only on app launch - no notification spamming thanks)
+- Fast recursive directory scanning on a background thread, with a live progress bar
+- Scan an entire disk, or pick any folder
+- A treemap view to quickly visualize where your disk space is going
+- Multi-select files/folders and delete them straight from the app
+- Right-click a file/folder to reveal it in your OS file manager
+- Cross-platform: macOS, Windows, Linux — one native binary, no runtime dependencies
+
+## Architecture
+
+This is a full rewrite of the original Tauri + React app. The backend is still Rust, but the entire UI layer — previously a React/TypeScript webview rendered by Tauri — has been replaced with [Slint](https://slint.dev), a native, GPU-accelerated Rust UI toolkit. The result is a single self-contained binary per platform with no embedded browser and no Node/npm build step.
+
+```
+squirreldisk/
+├── Cargo.toml         # single binary crate
+├── build.rs           # compiles the .slint UI at build time
+├── ui/                 # Slint UI (.slint files)
+│   ├── app.slint        # window shell + page router
+│   ├── globals.slint     # shared state/structs exposed to Rust
+│   ├── disk-list.slint   # "pick a disk / folder" screen
+│   ├── scanning-page.slint
+│   ├── detail-page.slint # treemap + file browser + delete flow
+│   └── icons.slint       # small vector glyphs (no image assets needed)
+├── icons/              # app icon (window icon + packaging)
+└── src/
+    ├── main.rs          # wires Slint callbacks/models to the Rust backend
+    ├── disks.rs          # enumerates mounted disks (sysinfo)
+    ├── scan.rs           # background recursive scanner (arena-based tree)
+    ├── treemap.rs         # squarified treemap layout algorithm
+    ├── viewmodel.rs        # builds the entries shown for a focused folder
+    ├── fileops.rs          # reveal-in-file-manager / delete
+    └── format.rs           # byte formatting helpers
+```
+
+### Notable design differences from the original app
+
+- **Treemap instead of a zoomable sunburst.** The original used a D3.js arc/sunburst chart, which relies on animated SVG path interpolation that doesn't map cleanly onto Slint's declarative, retained-mode UI model. A squarified treemap (implemented from scratch in `src/treemap.rs`, no dependency) gives the same "see what's big at a glance" experience — it's also what WinDirStat itself uses — while being a natural fit for Slint's rectangle/`Repeater` model.
+- **No bundled `pdu` sidecar binary.** Scanning is now done in-process, on a background thread, using a simple arena-allocated tree (`src/scan.rs`) instead of shelling out to an external `pdu` process and parsing its stdout/stderr like the Tauri version did.
+- **Checkbox multi-select instead of drag-and-drop.** Dragging files into a "delete bin" was a `react-beautiful-dnd` feature specific to the web UI; Slint doesn't have an equivalent widget, so deletion now works by ticking a small checkbox next to each item, which is arguably more discoverable and works the same regardless of pointer precision.
+- **Native window chrome instead of a custom vibrancy title bar.** The Tauri version drew its own title bar and used platform-specific window-vibrancy hacks. Those are Tauri/webview-specific integrations; SquirrelDisk now uses the OS's normal window frame, with an in-content breadcrumb bar for navigation.
+- **No auto-updater.** The old updater was wired into Tauri's signed-update infrastructure. It has been dropped rather than half-ported; releases are plain per-OS binaries attached to GitHub Releases (see `.github/workflows/main.yml`).
+
+## Building from source
+
+Requires a recent stable Rust toolchain (`rustup` recommended).
+
+```bash
+cargo run            # debug build + run
+cargo build --release
+```
+
+On Linux you'll need the usual Slint/winit windowing dependencies, e.g. on Debian/Ubuntu:
+
+```bash
+sudo apt-get install libfontconfig1-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+  libxkbcommon-dev libwayland-dev libgl1-mesa-dev libegl1-mesa-dev
+```
 
 ## Installation
 
 Please note that the current version is not 100% stable yet, and you may encounter bugs.
 
-### Windows
+Download the binary for your platform from the [release page](https://github.com/adileo/squirreldisk/releases). Builds are not code-signed, so your OS may warn you before the first launch:
 
-1. Download the installer from the [release page](https://github.com/adileo/squirreldisk/releases)
-2. The binary is not signed so Windows could open a popup window warning you that the file is unsecure, just click on "More Information" > "Run Anyway"
-
-[Why the binary isn't Codesigned and marked as unsafe?](https://news.ycombinator.com/item?id=19330062)
-
-### Ubuntu
-
-1. Download the .deb package from the [release page](https://github.com/adileo/squirreldisk/releases)
-2. Install
-
-### MacOS
-
-1. Download the .dmg from the [release page](https://github.com/adileo/squirreldisk/releases)
-2. Install the app from the .dmg
-3. First time you open the App: `Right click > Open` once (it won't run, since the binaries are not signed an alert will appear), then do it again `Right click > Open` to bypass the issue, it won't happen again after the first time.
+- **Windows**: click "More info" → "Run anyway". ([Why?](https://news.ycombinator.com/item?id=19330062))
+- **macOS**: `Right click > Open` once (it will refuse to run and warn about an unsigned binary), then `Right click > Open` again to confirm — this is only needed the first time.
+- **Linux**: mark the downloaded binary executable (`chmod +x`) and run it.
 
 ## Disclaimer
 
-This app was a project from 2 years ago built in Electron in 2 days, I decided to port it to Tauri to achieve better performances and to make it Open Source. Yay.
-
-The code is still spaghetti and needs a lot of refactoring.
+This app started as a project from a few years ago built in Electron in 2 days, then ported to Tauri, and is now a from-scratch rewrite on Rust + Slint. Yay.
 
 ## Bug Reporting
 
@@ -80,5 +112,5 @@ You can also submit a feature request on our [issue page](https://github.com/adi
 
 ## Credits
 
-- [parallel-disk-usage](https://github.com/KSXGitHub/parallel-disk-usage)
-- [tauri](https://github.com/tauri-apps/tauri)
+- [Slint](https://github.com/slint-ui/slint)
+- [sysinfo](https://github.com/GuillaumeGomez/sysinfo)
